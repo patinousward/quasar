@@ -57,7 +57,7 @@ public class FiberForkJoinScheduler extends FiberScheduler {
      */
     public FiberForkJoinScheduler(String name, int parallelism, UncaughtExceptionHandler exceptionHandler, MonitorType monitorType, boolean detailedInfo) {
         super(name, monitorType, detailedInfo);
-        this.fjPool = createForkJoinPool(name, parallelism, exceptionHandler, monitorType);
+        this.fjPool = createForkJoinPool(name, parallelism, exceptionHandler, monitorType);//MonitoredForkJoinPool
         this.timer = createTimer(fjPool, getMonitor());
     }
 
@@ -260,9 +260,10 @@ public class FiberForkJoinScheduler extends FiberScheduler {
 //            final FibersMonitor monitor = fiber.getMonitor();
 //            if (monitor != null & fiber.getState() != Strand.State.STARTED)
 //                monitor.fiberResumed();
-            if (getPool() == fjPool)
+            if (getPool() == fjPool)//forkJointTask的fork方法
                 fork();
             else
+                //这个提交就算jdk的forkJointPool的提交
                 fjPool.submit(this);
         }
 

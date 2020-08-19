@@ -174,15 +174,15 @@ public class Fiber<V> extends Strand implements Joinable<V>, Serializable, Futur
     @SuppressWarnings("LeakingThisInConstructor")
     public Fiber(String name, FiberScheduler scheduler, int stackSize, SuspendableCallable<V> target) {
         this.state = State.NEW;
-        this.fid = nextFiberId();
+        this.fid = nextFiberId();//fid 原子long，从10000001L开始
         this.scheduler = scheduler;
         setName(name);
         Strand parent = Strand.currentStrand(); // retaining the parent as a field is a huge, complex memory leak
         this.target = target;
-        this.task = scheduler != null ? scheduler.newFiberTask(this) : new FiberForkJoinTask(this);
+        this.task = scheduler != null ? scheduler.newFiberTask(this) : new FiberForkJoinTask(this);//默认是前者FiberForkJoinTask
         this.initialStackSize = stackSize;
-        this.stack = new Stack(this, stackSize > 0 ? stackSize : DEFAULT_STACK_SIZE);
-        this.priority = (byte)NORM_PRIORITY;
+        this.stack = new Stack(this, stackSize > 0 ? stackSize : DEFAULT_STACK_SIZE);//32
+        this.priority = (byte)NORM_PRIORITY;//default 5
 
         if (Debug.isDebug())
             record(1, "Fiber", "<init>", "Creating fiber name: %s, scheduler: %s, parent: %s, target: %s, task: %s, stackSize: %s", name, scheduler, parent, target, task, stackSize);
@@ -198,9 +198,9 @@ public class Fiber<V> extends Strand implements Joinable<V>, Serializable, Futur
         }
 
         final Thread currentThread = Thread.currentThread();
-        Object inheritableThreadLocals = ThreadAccess.getInheritableThreadLocals(currentThread);
+        Object inheritableThreadLocals = ThreadAccess.getInheritableThreadLocals(currentThread);//获取Thread中的 inheritableThreadLocals
         if (inheritableThreadLocals != null)
-            this.inheritableFiberLocals = ThreadAccess.createInheritedMap(inheritableThreadLocals);
+            this.inheritableFiberLocals = ThreadAccess.createInheritedMap(inheritableThreadLocals);//获取Thread中 contextClassLoader
         this.contextClassLoader = ThreadAccess.getContextClassLoader(currentThread);
         if (MAINTAIN_ACCESS_CONTROL_CONTEXT)
             this.inheritedAccessControlContext = AccessController.getContext();
@@ -239,6 +239,7 @@ public class Fiber<V> extends Strand implements Joinable<V>, Serializable, Futur
     private static FiberScheduler defaultScheduler() {
         final Fiber parent = currentFiber();
         if (parent == null)
+            //new 一个默认的FiberForkJoinScheduler
             return DefaultFiberScheduler.getInstance();
         else
             return parent.getScheduler();
@@ -572,6 +573,7 @@ public class Fiber<V> extends Strand implements Joinable<V>, Serializable, Futur
      * @throws IllegalArgumentException when stackSize is &lt;= 0
      */
     public Fiber() {
+        //quasar-demo的入口
         this(null, -1, (SuspendableCallable) null);
     }
 
@@ -1068,6 +1070,9 @@ public class Fiber<V> extends Strand implements Joinable<V>, Serializable, Futur
     }
 
     private static Fiber getCurrentFiber() {
+        //1.获取当前线程
+        //2.当前线程是否是FiberWorkerThread 的实例 FiberWorkerThread extends ExtendedForkJoinWorkerThread
+        //3.从currentThread 中获取target对象返回
         final Thread currentThread = Thread.currentThread();
         if (FiberForkJoinScheduler.isFiberThread(currentThread))
             return FiberForkJoinScheduler.getTargetFiber(currentThread);
@@ -1095,6 +1100,7 @@ public class Fiber<V> extends Strand implements Joinable<V>, Serializable, Futur
     }
 
     protected V run() throws SuspendExecution, InterruptedException {
+        //quasar-demo中是重写这个接口
         if (target != null)
             return target.run();
         return null;
@@ -1128,7 +1134,7 @@ public class Fiber<V> extends Strand implements Joinable<V>, Serializable, Futur
             throw new IllegalThreadStateException("Fiber has already been started or has died");
         }
         getMonitor().fiberStarted(this);
-        task.submit();
+        task.submit();//核心方法
         return this;
     }
 
